@@ -1,0 +1,413 @@
+{% extends 'layout.html' %}
+
+{% block title %}Team Analysis{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-12 mb-4">
+        <h1><i class="fas fa-users"></i> Team Analysis</h1>
+        <p class="lead">Explore detailed statistics and performance metrics for IPL teams.</p>
+    </div>
+</div>
+
+{% if error %}
+<div class="alert alert-danger" role="alert">
+    <i class="fas fa-exclamation-triangle"></i> {{ error }}
+</div>
+{% else %}
+
+<!-- Team Selection -->
+<div class="card mb-4">
+    <div class="card-header bg-dark">
+        <h5 class="card-title mb-0"><i class="fas fa-filter"></i> Select Team</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-8">
+                <select class="form-select" id="teamSelect" onchange="this.form.submit()">
+                    {% for team in teams %}
+                    <option value="{{ team }}" {% if team == selected_team %}selected{% endif %}>{{ team }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <button class="btn btn-primary w-100" id="updateTeamStatsBtn">Update Stats</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Team Overview -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header bg-dark">
+                <h5 class="card-title mb-0"><i class="fas fa-info-circle"></i> {{ selected_team }} Overview</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="border rounded p-3 text-center">
+                            <h3>{{ team_stats.matches_played }}</h3>
+                            <p class="mb-0">Matches Played</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="border rounded p-3 text-center">
+                            <h3>{{ team_stats.matches_won }}</h3>
+                            <p class="mb-0">Matches Won</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="border rounded p-3 text-center">
+                            <h3>{{ team_stats.win_percentage }}%</h3>
+                            <p class="mb-0">Win Percentage</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="border rounded p-3 text-center">
+                            <h3>{{ team_stats.batting_first_win_percentage }}%</h3>
+                            <p class="mb-0">Win % Batting First</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <h6>Win Rate Comparison:</h6>
+                    <div class="progress mb-3" style="height: 25px;">
+                        <div class="progress-bar bg-success" role="progressbar" style="width: {{ team_stats.home_win_percentage }}%;">
+                            Home: {{ team_stats.home_win_percentage }}%
+                        </div>
+                    </div>
+                    <div class="progress" style="height: 25px;">
+                        <div class="progress-bar bg-info" role="progressbar" style="width: {{ team_stats.away_win_percentage }}%;">
+                            Away: {{ team_stats.away_win_percentage }}%
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header bg-dark">
+                <h5 class="card-title mb-0"><i class="fas fa-chart-line"></i> Performance Trend</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="seasonPerformanceChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Top Players and Batting Performance -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header bg-dark">
+                <h5 class="card-title mb-0"><i class="fas fa-award"></i> Top Performers</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Player</th>
+                                <th>Player of the Match Awards</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for player in team_stats.top_players %}
+                            <tr>
+                                <td>{{ player.player }}</td>
+                                <td>{{ player.pom_count }}</td>
+                            </tr>
+                            {% endfor %}
+                            {% if not team_stats.top_players %}
+                            <tr>
+                                <td colspan="2" class="text-center">No data available</td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header bg-dark">
+                <h5 class="card-title mb-0"><i class="fas fa-chart-pie"></i> Batting Performance</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="battingPerformanceChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Head-to-Head Records -->
+<div class="card mb-4">
+    <div class="card-header bg-dark">
+        <h5 class="card-title mb-0"><i class="fas fa-handshake"></i> Head-to-Head Records</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Opponent</th>
+                        <th>Matches</th>
+                        <th>Wins</th>
+                        <th>Losses</th>
+                        <th>Win %</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for h2h in head_to_head %}
+                    <tr>
+                        <td>{{ h2h.team2 }}</td>
+                        <td>{{ h2h.matches_played }}</td>
+                        <td>{{ h2h.team1_wins }}</td>
+                        <td>{{ h2h.team2_wins }}</td>
+                        <td>{{ h2h.team1_win_percentage }}%</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary view-h2h-btn" 
+                                    data-team1="{{ h2h.team1 }}" 
+                                    data-team2="{{ h2h.team2 }}">
+                                View Details
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% if not head_to_head %}
+                    <tr>
+                        <td colspan="6" class="text-center">No head-to-head records available</td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Season-wise Performance -->
+<div class="card mb-4">
+    <div class="card-header bg-dark">
+        <h5 class="card-title mb-0"><i class="fas fa-history"></i> Season Performance</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Season</th>
+                        <th>Matches Played</th>
+                        <th>Matches Won</th>
+                        <th>Win Percentage</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for season in team_stats.seasons_performance %}
+                    <tr>
+                        <td>{{ season.season }}</td>
+                        <td>{{ season.matches }}</td>
+                        <td>{{ season.wins }}</td>
+                        <td>{{ season.win_percentage }}%</td>
+                    </tr>
+                    {% endfor %}
+                    {% if not team_stats.seasons_performance %}
+                    <tr>
+                        <td colspan="4" class="text-center">No season data available</td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Head-to-Head Details Modal -->
+<div class="modal fade" id="h2hModal" tabindex="-1" aria-labelledby="h2hModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="h2hModalLabel">Head-to-Head Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="h2hModalBody">
+                <div class="text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Loading head-to-head details...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    {% if not error %}
+    // Update team stats when dropdown changes
+    document.getElementById('updateTeamStatsBtn').addEventListener('click', function() {
+        const selectedTeam = document.getElementById('teamSelect').value;
+        window.location.href = `/team-analysis?team=${encodeURIComponent(selectedTeam)}`;
+    });
+    
+    // Season performance chart
+    const seasonsData = {{ team_stats.seasons_performance|tojson }};
+    const seasons = seasonsData.map(season => season.season);
+    const winPercentages = seasonsData.map(season => season.win_percentage);
+    
+    const seasonPerformanceData = {
+        labels: seasons,
+        datasets: [{
+            label: 'Win Percentage',
+            data: winPercentages,
+            backgroundColor: 'rgba(46, 204, 113, 0.5)',
+            borderColor: 'rgba(46, 204, 113, 1)',
+            borderWidth: 2,
+            tension: 0.3,
+            fill: true
+        }]
+    };
+    
+    createLineChart('seasonPerformanceChart', seasonPerformanceData, 'Season-wise Win Percentage');
+    
+    // Batting performance chart
+    const battingData = {
+        labels: ['Batting First', 'Batting Second'],
+        datasets: [{
+            data: [
+                {{ team_stats.batting_first_win_percentage }},
+                {{ team_stats.batting_second_win_percentage }}
+            ],
+            backgroundColor: ['#f39c12', '#3498db'],
+        }]
+    };
+    
+    createPieChart('battingPerformanceChart', battingData, 'Win % by Batting Order');
+    
+    // Head-to-head details modal
+    const h2hModal = new bootstrap.Modal(document.getElementById('h2hModal'));
+    const h2hBtns = document.querySelectorAll('.view-h2h-btn');
+    
+    h2hBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const team1 = this.getAttribute('data-team1');
+            const team2 = this.getAttribute('data-team2');
+            
+            document.getElementById('h2hModalLabel').textContent = `${team1} vs ${team2}`;
+            
+            fetch(`/api/head-to-head/${team1}/${team2}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        throw new Error(data.error);
+                    }
+                    
+                    const recentMatches = data.recent_matches || [];
+                    
+                    let html = `
+                        <div class="row">
+                            <div class="col-md-6 mb-4">
+                                <div class="text-center">
+                                    <canvas id="modalH2hChart" height="200"></canvas>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-4">
+                                <div class="card h-100">
+                                    <div class="card-header bg-dark">
+                                        <h6 class="card-title mb-0">Summary</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <p>Total Matches: ${data.matches_played}</p>
+                                        <p>${team1} Wins: ${data.team1_wins} (${data.team1_win_percentage}%)</p>
+                                        <p>${team2} Wins: ${data.team2_wins} (${(100 - data.team1_win_percentage).toFixed(2)}%)</p>
+                                        <p>No Results/Ties: ${data.no_results}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <div class="card-header bg-dark">
+                                <h6 class="card-title mb-0">Recent Matches</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Date</th>
+                                                <th>Venue</th>
+                                                <th>Result</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                    `;
+                    
+                    if (recentMatches.length > 0) {
+                        recentMatches.forEach(match => {
+                            html += `
+                                <tr>
+                                    <td>${match.date}</td>
+                                    <td>${match.venue}</td>
+                                    <td>${match.result}</td>
+                                </tr>
+                            `;
+                        });
+                    } else {
+                        html += `
+                            <tr>
+                                <td colspan="3" class="text-center">No recent matches found</td>
+                            </tr>
+                        `;
+                    }
+                    
+                    html += `
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    document.getElementById('h2hModalBody').innerHTML = html;
+                    
+                    // Create chart in modal
+                    const modalChartData = {
+                        labels: [team1, team2, 'No Result'],
+                        datasets: [{
+                            data: [data.team1_wins, data.team2_wins, data.no_results],
+                            backgroundColor: ['#e74c3c', '#3498db', '#95a5a6'],
+                        }]
+                    };
+                    
+                    createPieChart('modalH2hChart', modalChartData, 'Head-to-Head Results');
+                    
+                    h2hModal.show();
+                })
+                .catch(error => {
+                    document.getElementById('h2hModalBody').innerHTML = `
+                        <div class="alert alert-danger" role="alert">
+                            <i class="fas fa-exclamation-circle me-2"></i> Error: ${error.message}
+                        </div>
+                    `;
+                    h2hModal.show();
+                });
+        });
+    });
+    {% endif %}
+});
+</script>
+{% endblock %}

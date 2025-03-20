@@ -1,0 +1,468 @@
+{% extends 'layout.html' %}
+
+{% block title %}Venue Statistics{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-12 mb-4">
+        <h1><i class="fas fa-map-marker-alt"></i> Venue Statistics</h1>
+        <p class="lead">Explore match statistics and team performance at different IPL venues.</p>
+    </div>
+</div>
+
+{% if error %}
+<div class="alert alert-danger" role="alert">
+    <i class="fas fa-exclamation-triangle"></i> {{ error }}
+</div>
+{% else %}
+
+<!-- Venue Selection -->
+<div class="card mb-4">
+    <div class="card-header bg-dark">
+        <h5 class="card-title mb-0"><i class="fas fa-filter"></i> Select Venue</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-8">
+                <select class="form-select" id="venueSelect">
+                    {% for venue in venues %}
+                    <option value="{{ venue }}" {% if venue == selected_venue %}selected{% endif %}>{{ venue }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <button class="btn btn-primary w-100" id="updateVenueStatsBtn">Update Stats</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Venue Overview -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header bg-dark">
+                <h5 class="card-title mb-0"><i class="fas fa-info-circle"></i> Venue Overview</h5>
+            </div>
+            <div class="card-body">
+                <h4 class="text-center mb-4">{{ selected_venue }}</h4>
+                <div class="row">
+                    <div class="col-6 mb-3">
+                        <div class="border rounded p-3 text-center">
+                            <h3>{{ venue_stats.matches_played }}</h3>
+                            <p class="mb-0">Total Matches</p>
+                        </div>
+                    </div>
+                    <div class="col-6 mb-3">
+                        <div class="border rounded p-3 text-center">
+                            <h3>{{ venue_stats.avg_first_innings_score }}</h3>
+                            <p class="mb-0">Avg. First Innings Score</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <h6>Batting First Win %:</h6>
+                    <div class="progress" style="height: 25px;">
+                        <div class="progress-bar bg-success" role="progressbar" 
+                             style="width: {{ venue_stats.first_innings_win_percentage }}%;">
+                            {{ venue_stats.first_innings_win_percentage }}%
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <h6>Batting Second Win %:</h6>
+                    <div class="progress" style="height: 25px;">
+                        <div class="progress-bar bg-info" role="progressbar" 
+                             style="width: {{ venue_stats.second_innings_win_percentage }}%;">
+                            {{ venue_stats.second_innings_win_percentage }}%
+                        </div>
+                    </div>
+                </div>
+                <div class="alert alert-light mt-3">
+                    <p class="mb-0">
+                        <i class="fas fa-lightbulb text-warning"></i> 
+                        {% if venue_stats.first_innings_win_percentage > 60 %}
+                            <strong>Batting first</strong> has a significant advantage at this venue.
+                        {% elif venue_stats.second_innings_win_percentage > 60 %}
+                            <strong>Chasing</strong> has a significant advantage at this venue.
+                        {% else %}
+                            This venue has a <strong>balanced record</strong> for batting first vs. chasing.
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header bg-dark">
+                <h5 class="card-title mb-0"><i class="fas fa-chart-pie"></i> Toss Decision Impact</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="tossDecisionChart" height="200"></canvas>
+                <div class="alert alert-light mt-3">
+                    <p class="mb-0 text-black">
+                        <i class="fas fa-lightbulb text-warning"></i> 
+                        {% if venue_stats.toss_bat_win_percentage > venue_stats.toss_field_win_percentage %}
+                            Teams that <strong>win the toss and choose to bat</strong> have a higher win rate ({{ venue_stats.toss_bat_win_percentage }}%).
+                        {% elif venue_stats.toss_field_win_percentage > venue_stats.toss_bat_win_percentage %}
+                            Teams that <strong>win the toss and choose to field</strong> have a higher win rate ({{ venue_stats.toss_field_win_percentage }}%).
+                        {% else %}
+                            Toss decision has <strong>minimal impact</strong> on match outcomes at this venue.
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Team Performance at Venue -->
+<div class="card mb-4">
+    <div class="card-header bg-dark">
+        <h5 class="card-title mb-0"><i class="fas fa-users"></i> Team Performance at {{ selected_venue }}</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-7">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Team</th>
+                                <th>Matches</th>
+                                <th>Wins</th>
+                                <th>Win %</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for team in venue_stats.team_stats %}
+                            <tr>
+                                <td>{{ team.team }}</td>
+                                <td>{{ team.matches }}</td>
+                                <td>{{ team.wins }}</td>
+                                <td>{{ team.win_percentage }}%</td>
+                            </tr>
+                            {% endfor %}
+                            {% if not venue_stats.team_stats %}
+                            <tr>
+                                <td colspan="4" class="text-center">No team data available</td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="col-md-5">
+                <canvas id="teamPerformanceChart" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- High and Low Scores -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header bg-dark">
+                <h5 class="card-title mb-0"><i class="fas fa-arrow-up"></i> Highest Scores at Venue</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Team</th>
+                                <th>Score</th>
+                                <th>Opponent</th>
+                                <th>Season</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for score in venue_stats.high_scores %}
+                            <tr>
+                                <td>{{ score.team }}</td>
+                                <td><strong>{{ score.score }}</strong></td>
+                                <td>{{ score.opponent }}</td>
+                                <td>{{ score.season }}</td>
+                            </tr>
+                            {% endfor %}
+                            {% if not venue_stats.high_scores %}
+                            <tr>
+                                <td colspan="4" class="text-center">No data available</td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header bg-dark">
+                <h5 class="card-title mb-0"><i class="fas fa-arrow-down"></i> Lowest Scores at Venue</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Team</th>
+                                <th>Score</th>
+                                <th>Opponent</th>
+                                <th>Season</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for score in venue_stats.low_scores %}
+                            <tr>
+                                <td>{{ score.team }}</td>
+                                <td><strong>{{ score.score }}</strong></td>
+                                <td>{{ score.opponent }}</td>
+                                <td>{{ score.season }}</td>
+                            </tr>
+                            {% endfor %}
+                            {% if not venue_stats.low_scores %}
+                            <tr>
+                                <td colspan="4" class="text-center">No data available</td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Venue Prediction Tool -->
+<div class="card mb-4">
+    <div class="card-header bg-dark">
+        <h5 class="card-title mb-0"><i class="fas fa-chart-line"></i> Match Prediction at this Venue</h5>
+    </div>
+    <div class="card-body">
+        <p>Predict the outcome of a match at {{ selected_venue }} based on historical data.</p>
+        <div class="row">
+            <div class="col-md-5">
+                <div class="mb-3">
+                    <label for="team1PredictSelect" class="form-label">Team 1</label>
+                    <select class="form-select" id="team1PredictSelect">
+                        {% for team_stat in venue_stats.team_stats %}
+                        <option value="{{ team_stat.team }}">{{ team_stat.team }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="team2PredictSelect" class="form-label">Team 2</label>
+                    <select class="form-select" id="team2PredictSelect">
+                        {% for team_stat in venue_stats.team_stats %}
+                        <option value="{{ team_stat.team }}" {% if loop.index == 2 %}selected{% endif %}>{{ team_stat.team }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="tossWinnerSelect" class="form-label">Toss Winner</label>
+                    <select class="form-select" id="tossWinnerSelect">
+                        <option value="team1">Team 1</option>
+                        <option value="team2">Team 2</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="tossDecisionSelect" class="form-label">Toss Decision</label>
+                    <select class="form-select" id="tossDecisionSelect">
+                        <option value="bat">Bat</option>
+                        <option value="field">Field</option>
+                    </select>
+                </div>
+                <div class="d-grid">
+                    <button class="btn btn-primary" id="predictVenueMatchBtn">Predict Match</button>
+                </div>
+            </div>
+            <div class="col-md-7">
+                <div id="venuePredictionResult">
+                    <div class="text-center text-muted py-5">
+                        <i class="fas fa-chart-line fa-3x mb-3"></i>
+                        <p>Select teams and toss information, then click "Predict Match" to see the prediction.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    {% if not error %}
+    // Update venue stats when dropdown changes
+    document.getElementById('updateVenueStatsBtn').addEventListener('click', function() {
+        const selectedVenue = document.getElementById('venueSelect').value;
+        window.location.href = `/venue-stats?venue=${encodeURIComponent(selectedVenue)}`;
+    });
+    
+    // Toss decision impact chart
+    const tossDecisionData = {
+        labels: ['Choose to Bat', 'Choose to Field'],
+        datasets: [{
+            label: 'Win Percentage',
+            data: [
+                {{ venue_stats.toss_bat_win_percentage }},
+                {{ venue_stats.toss_field_win_percentage }}
+            ],
+            backgroundColor: ['#f39c12', '#3498db'],
+            borderWidth: 1
+        }]
+    };
+    
+    createBarChart('tossDecisionChart', tossDecisionData, 'Win % by Toss Decision');
+    
+    // Team performance chart
+    const teamData = {{ venue_stats.team_stats|tojson }};
+    // Only take top 5 teams by win percentage for better visualization
+    const topTeams = teamData.slice(0, 5);
+    
+    const teamPerformanceData = {
+        labels: topTeams.map(team => team.team),
+        datasets: [{
+            label: 'Win Percentage',
+            data: topTeams.map(team => team.win_percentage),
+            backgroundColor: [
+                '#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6'
+            ],
+            borderWidth: 1
+        }]
+    };
+    
+    createHorizontalBarChart('teamPerformanceChart', teamPerformanceData, 'Team Win % at Venue (Top 5)');
+    
+    // Venue prediction functionality
+    document.getElementById('predictVenueMatchBtn').addEventListener('click', function() {
+        const team1 = document.getElementById('team1PredictSelect').value;
+        const team2 = document.getElementById('team2PredictSelect').value;
+        const venue = '{{ selected_venue }}';
+        const tossWinnerSelect = document.getElementById('tossWinnerSelect');
+        const tossDecision = document.getElementById('tossDecisionSelect').value;
+        
+        // Get actual toss winner based on select value
+        let tossWinner;
+        if (tossWinnerSelect.value === 'team1') {
+            tossWinner = team1;
+        } else {
+            tossWinner = team2;
+        }
+        
+        if (team1 === team2) {
+            alert('Please select two different teams for prediction.');
+            return;
+        }
+        
+        // Show loading indicator
+        document.getElementById('venuePredictionResult').innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2">Analyzing match data and generating prediction...</p>
+            </div>
+        `;
+        
+        // Call prediction API
+        fetch('/api/predict', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                team1: team1,
+                team2: team2,
+                venue: venue,
+                tossWinner: tossWinner,
+                tossDecision: tossDecision
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                throw new Error(data.error);
+            }
+            
+            const team1Prob = data.team1_win_probability;
+            const team2Prob = data.team2_win_probability;
+            const prediction = data.predicted_winner;
+            const venueFactor = data.venue_factor || [];
+            const h2hStats = data.h2h_stats || { matches: 0, team1_wins: 0, team2_wins: 0 };
+            
+            let html = `
+                <div class="card border-primary h-100">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">Match Prediction</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="text-center mb-4">
+                            <h6>${team1} vs ${team2} at ${venue}</h6>
+                            <div class="progress mt-3" style="height: 30px;">
+                                <div class="progress-bar bg-danger" role="progressbar" style="width: ${team1Prob}%">
+                                    ${team1}: ${team1Prob.toFixed(1)}%
+                                </div>
+                                <div class="progress-bar bg-info" role="progressbar" style="width: ${team2Prob}%">
+                                    ${team2}: ${team2Prob.toFixed(1)}%
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <h6 class="alert-heading text-black"><i class="fas fa-trophy"></i> Prediction</h6>
+                            <p class="mb-0 text-black"><strong>${prediction}</strong> is predicted to win this match.</p>
+                        </div>
+                        
+                        <div class="card bg-white mb-3">
+                            <div class="card-body">
+                                <h6 class="text-black"><i class="fas fa-history"></i> Head-to-Head Record</h6>
+                                <p class="text-black">Matches Played: ${h2hStats.matches}</p>
+                                <p class="text-black">${team1} Wins: ${h2hStats.team1_wins}, ${team2} Wins: ${h2hStats.team2_wins}</p>
+                            </div>
+                        </div>
+            `;
+            
+            if (venueFactor.length > 0) {
+                html += `
+                    <div class="card bg-light">
+                        <div class="card-body">
+                            <h6><i class="fas fa-map-marker-alt"></i> Venue Factors</h6>
+                            <ul class="mb-0">
+                `;
+                
+                venueFactor.forEach(factor => {
+                    html += `<li>${factor}</li>`;
+                });
+                
+                html += `
+                            </ul>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            html += `
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('venuePredictionResult').innerHTML = html;
+        })
+        .catch(error => {
+            document.getElementById('venuePredictionResult').innerHTML = `
+                <div class="alert alert-danger" role="alert">
+                    <i class="fas fa-exclamation-circle me-2"></i> Error: ${error.message}
+                </div>
+            `;
+        });
+    });
+    {% endif %}
+});
+</script>
+{% endblock %}

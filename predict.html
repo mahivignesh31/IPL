@@ -1,0 +1,591 @@
+{% extends 'layout.html' %}
+
+{% block title %}Predict Match{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-12 mb-4">
+        <h1><i class="fas fa-chart-line"></i> Match Prediction</h1>
+        <p class="lead">Predict the outcome of IPL matches based on team statistics, venue data, and historical performance.</p>
+    </div>
+</div>
+
+{% if error %}
+<div class="alert alert-danger" role="alert">
+    <i class="fas fa-exclamation-triangle"></i> {{ error }}
+</div>
+{% else %}
+
+<div class="row">
+    <div class="col-lg-4 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-dark">
+                <h5 class="card-title mb-0"><i class="fas fa-filter"></i> Match Parameters</h5>
+            </div>
+            <div class="card-body">
+                <form id="predictionForm">
+                    <div class="mb-3">
+                        <label for="team1Select" class="form-label">Team 1</label>
+                        <select class="form-select" id="team1Select" required>
+                            <option value="">Select Team 1</option>
+                            {% for team in teams %}
+                            <option value="{{ team }}">{{ team }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="team2Select" class="form-label">Team 2</label>
+                        <select class="form-select" id="team2Select" required>
+                            <option value="">Select Team 2</option>
+                            {% for team in teams %}
+                            <option value="{{ team }}">{{ team }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="venueSelect" class="form-label">Venue</label>
+                        <select class="form-select" id="venueSelect" required>
+                            <option value="">Select Venue</option>
+                            {% for venue in venues %}
+                            <option value="{{ venue }}">{{ venue }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="tossWinnerSelect" class="form-label">Toss Winner</label>
+                        <select class="form-select" id="tossWinnerSelect" required>
+                            <option value="">Select Toss Winner</option>
+                            <option value="team1">Team 1</option>
+                            <option value="team2">Team 2</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="tossDecisionSelect" class="form-label">Toss Decision</label>
+                        <select class="form-select" id="tossDecisionSelect" required>
+                            <option value="">Select Decision</option>
+                            <option value="bat">Bat</option>
+                            <option value="field">Field</option>
+                        </select>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fas fa-calculator me-2"></i> Predict Match
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-8 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-dark">
+                <h5 class="card-title mb-0"><i class="fas fa-chart-pie"></i> Prediction Result</h5>
+            </div>
+            <div class="card-body" id="predictionResult">
+                <div class="text-center text-muted py-5">
+                    <i class="fas fa-chart-line fa-3x mb-3"></i>
+                    <p>Enter match details to generate a prediction.</p>
+                    <p>The prediction algorithm analyzes team performance, head-to-head records, venue statistics, and toss factors to determine the likely match outcome.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card mb-4">
+            <div class="card-header bg-dark">
+                <h5 class="card-title mb-0"><i class="fas fa-info-circle"></i> Prediction Factors</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card h-100 mb-3">
+                            <div class="card-body">
+                                <h5 class="card-title"><i class="fas fa-users text-primary"></i> Team Performance</h5>
+                                <p>The prediction model analyzes:</p>
+                                <ul>
+                                    <li>Overall team win percentage</li>
+                                    <li>Recent form and performance trends</li>
+                                    <li>Win rate when batting first vs. chasing</li>
+                                    <li>Home and away record</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card h-100 mb-3">
+                            <div class="card-body">
+                                <h5 class="card-title"><i class="fas fa-handshake text-success"></i> Head-to-Head Record</h5>
+                                <p>The prediction includes:</p>
+                                <ul>
+                                    <li>Historical matchups between the teams</li>
+                                    <li>Win percentages in previous encounters</li>
+                                    <li>Recent head-to-head results</li>
+                                    <li>Performance trends when facing each other</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card h-100 mb-3">
+                            <div class="card-body">
+                                <h5 class="card-title"><i class="fas fa-map-marker-alt text-warning"></i> Venue Factors</h5>
+                                <p>The model considers:</p>
+                                <ul>
+                                    <li>Team-specific performance at the venue</li>
+                                    <li>Batting first vs. chasing success rate at the venue</li>
+                                    <li>Average scores and conditions</li>
+                                    <li>Team's familiarity with the venue</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card h-100 mb-3">
+                            <div class="card-body">
+                                <h5 class="card-title"><i class="fas fa-coins text-danger"></i> Toss Influence</h5>
+                                <p>The prediction factors in:</p>
+                                <ul>
+                                    <li>Historical advantage of winning the toss</li>
+                                    <li>Team's performance after winning/losing toss</li>
+                                    <li>Impact of toss decision (bat/field) at the venue</li>
+                                    <li>Recent trends in toss decisions and outcomes</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Team Comparison Modal -->
+<div class="modal fade" id="teamComparisonModal" tabindex="-1" aria-labelledby="teamComparisonModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="teamComparisonModalLabel">Team Comparison</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="teamComparisonModalBody">
+                <div class="text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Loading comparison data...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    {% if not error %}
+    const predictionForm = document.getElementById('predictionForm');
+    const team1Select = document.getElementById('team1Select');
+    const team2Select = document.getElementById('team2Select');
+    const tossWinnerSelect = document.getElementById('tossWinnerSelect');
+    
+    // Update toss winner options when teams change
+    function updateTossWinnerOptions() {
+        const team1 = team1Select.value;
+        const team2 = team2Select.value;
+        
+        if (team1 && team2) {
+            tossWinnerSelect.innerHTML = `
+                <option value="">Select Toss Winner</option>
+                <option value="team1">${team1}</option>
+                <option value="team2">${team2}</option>
+            `;
+        }
+    }
+    
+    team1Select.addEventListener('change', updateTossWinnerOptions);
+    team2Select.addEventListener('change', updateTossWinnerOptions);
+    
+    // Validate teams are different
+    team2Select.addEventListener('change', function() {
+        if (team1Select.value && team2Select.value && team1Select.value === team2Select.value) {
+            alert('Please select two different teams for prediction.');
+            team2Select.value = '';
+        }
+    });
+    
+    team1Select.addEventListener('change', function() {
+        if (team1Select.value && team2Select.value && team1Select.value === team2Select.value) {
+            alert('Please select two different teams for prediction.');
+            team1Select.value = '';
+        }
+    });
+    
+    // Submit form for prediction
+    predictionForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const team1 = team1Select.value;
+        const team2 = team2Select.value;
+        const venue = document.getElementById('venueSelect').value;
+        const tossDecision = document.getElementById('tossDecisionSelect').value;
+        
+        // Get actual toss winner based on select value
+        let tossWinner;
+        if (tossWinnerSelect.value === 'team1') {
+            tossWinner = team1;
+        } else if (tossWinnerSelect.value === 'team2') {
+            tossWinner = team2;
+        } else {
+            alert('Please select the toss winner.');
+            return;
+        }
+        
+        // Validate all fields are filled
+        if (!team1 || !team2 || !venue || !tossWinner || !tossDecision) {
+            alert('Please fill in all fields.');
+            return;
+        }
+        
+        // Show loading indicator
+        document.getElementById('predictionResult').innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2">Analyzing match data and generating prediction...</p>
+            </div>
+        `;
+        
+        // Call prediction API
+        fetch('/api/predict', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                team1: team1,
+                team2: team2,
+                venue: venue,
+                tossWinner: tossWinner,
+                tossDecision: tossDecision
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                throw new Error(data.error);
+            }
+            
+            const team1Prob = data.team1_win_probability;
+            const team2Prob = data.team2_win_probability;
+            const prediction = data.predicted_winner;
+            const venueFactor = data.venue_factor || [];
+            const h2hStats = data.h2h_stats || { matches: 0, team1_wins: 0, team2_wins: 0 };
+            
+            // Determine batting/bowling teams based on toss
+            let battingTeam, bowlingTeam;
+            if (tossWinner === team1 && tossDecision === 'bat' || tossWinner === team2 && tossDecision === 'field') {
+                battingTeam = team1;
+                bowlingTeam = team2;
+            } else {
+                battingTeam = team2;
+                bowlingTeam = team1;
+            }
+            
+            let html = `
+                <div class="row">
+                    <div class="col-md-7">
+                        <div class="match-card p-3 border rounded mb-4">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div class="team-box text-center">
+                                    <h5>${team1}</h5>
+                                    <div class="circle-progress position-relative my-2" style="width: 80px; height: 80px;">
+                                        <canvas id="team1Chart" width="80" height="80"></canvas>
+                                        <div class="position-absolute top-50 start-50 translate-middle">
+                                            <h4 class="mb-0">${Math.round(team1Prob)}%</h4>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="text-center">
+                                    <div class="match-vs bg-dark text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                                        <span>VS</span>
+                                    </div>
+                                    <div class="mt-2">
+                                        <span class="badge bg-secondary">${venue}</span>
+                                    </div>
+                                </div>
+                                <div class="team-box text-center">
+                                    <h5>${team2}</h5>
+                                    <div class="circle-progress position-relative my-2" style="width: 80px; height: 80px;">
+                                        <canvas id="team2Chart" width="80" height="80"></canvas>
+                                        <div class="position-absolute top-50 start-50 translate-middle">
+                                            <h4 class="mb-0">${Math.round(team2Prob)}%</h4>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="toss-info bg-light p-2 rounded text-center mb-3" style="color: black;">
+                                <span>
+                                    <i class="fas fa-coins text-warning me-1"></i>
+                                    <strong>${tossWinner}</strong> won the toss and elected to <strong>${tossDecision} first</strong>
+                                </span>
+                            </div>
+                            
+                            <div class="text-center">
+                                <div class="alert ${prediction === team1 ? 'alert-danger' : 'alert-info'} mb-0">
+                                    <h5 class="alert-heading"><i class="fas fa-trophy me-2"></i>Prediction Result</h5>
+                                    <p class="mb-0"><strong>${prediction}</strong> is predicted to win this match.</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-3">
+                            <button class="btn btn-outline-primary mb-3" id="showComparisonBtn">
+                                <i class="fas fa-chart-bar me-2"></i>View Detailed Team Comparison
+                            </button>
+                            
+                            <h6><i class="fas fa-info-circle me-2"></i>Match Setup:</h6>
+                            <ul>
+                                <li><strong>${battingTeam}</strong> will bat first</li>
+                                <li><strong>${bowlingTeam}</strong> will bowl first</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-5">
+                        <div class="card mb-3">
+                            <div class="card-header bg-primary text-white">
+                                <h6 class="mb-0"><i class="fas fa-handshake me-2"></i>Head-to-Head Record</h6>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="h2hChart" height="150"></canvas>
+                                <div class="mt-2">
+                                    <p class="mb-1">Total matches: <strong>${h2hStats.matches}</strong></p>
+                                    <p class="mb-1">${team1} wins: <strong>${h2hStats.team1_wins}</strong></p>
+                                    <p class="mb-1">${team2} wins: <strong>${h2hStats.team2_wins}</strong></p>
+                                    <p class="mb-0">No results: <strong>${h2hStats.matches - h2hStats.team1_wins - h2hStats.team2_wins}</strong></p>
+                                </div>
+                            </div>
+                        </div>
+            `;
+            
+            if (venueFactor.length > 0) {
+                html += `
+                    <div class="card">
+                        <div class="card-header bg-success text-white">
+                            <h6 class="mb-0"><i class="fas fa-map-marker-alt me-2"></i>Venue Factors</h6>
+                        </div>
+                        <div class="card-body">
+                            <ul class="mb-0">
+                `;
+                
+                venueFactor.forEach(factor => {
+                    html += `<li>${factor}</li>`;
+                });
+                
+                html += `
+                            </ul>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            html += `
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('predictionResult').innerHTML = html;
+            
+            // Create team1 donut chart
+            createDonutChart('team1Chart', team1Prob);
+            
+            // Create team2 donut chart
+            createDonutChart('team2Chart', team2Prob);
+            
+            // Create head-to-head chart
+            const h2hData = {
+                labels: [team1, team2, 'No Result'],
+                datasets: [{
+                    data: [
+                        h2hStats.team1_wins, 
+                        h2hStats.team2_wins, 
+                        h2hStats.matches - h2hStats.team1_wins - h2hStats.team2_wins
+                    ],
+                    backgroundColor: ['#e74c3c', '#3498db', '#95a5a6'],
+                }]
+            };
+            
+            createPieChart('h2hChart', h2hData, 'Head-to-Head Results');
+            
+            // Team comparison modal handling
+            document.getElementById('showComparisonBtn').addEventListener('click', function() {
+                const teamComparisonModal = new bootstrap.Modal(document.getElementById('teamComparisonModal'));
+                
+                document.getElementById('teamComparisonModalLabel').textContent = `${team1} vs ${team2} Comparison`;
+                
+                // Fetch team stats
+                Promise.all([
+                    fetch(`/api/team-stats/${team1}`).then(resp => resp.json()),
+                    fetch(`/api/team-stats/${team2}`).then(resp => resp.json())
+                ])
+                .then(([team1Stats, team2Stats]) => {
+                    let modalHtml = `
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                <canvas id="comparisonChart" height="200"></canvas>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="card mb-3">
+                                    <div class="card-header bg-danger">
+                                        <h6 class="card-title mb-0 text-white">${team1} Stats</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <p>Matches: ${team1Stats.matches_played}</p>
+                                        <p>Wins: ${team1Stats.matches_won}</p>
+                                        <p>Win Rate: ${team1Stats.win_percentage}%</p>
+                                        <p>Home Win Rate: ${team1Stats.home_win_percentage}%</p>
+                                        <p>Away Win Rate: ${team1Stats.away_win_percentage}%</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card mb-3">
+                                    <div class="card-header bg-info">
+                                        <h6 class="card-title mb-0 text-white">${team2} Stats</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <p>Matches: ${team2Stats.matches_played}</p>
+                                        <p>Wins: ${team2Stats.matches_won}</p>
+                                        <p>Win Rate: ${team2Stats.win_percentage}%</p>
+                                        <p>Home Win Rate: ${team2Stats.home_win_percentage}%</p>
+                                        <p>Away Win Rate: ${team2Stats.away_win_percentage}%</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-header bg-dark">
+                                        <h6 class="card-title mb-0">Performance Comparison</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="table-responsive">
+                                            <table class="table table-striped">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Metric</th>
+                                                        <th>${team1}</th>
+                                                        <th>${team2}</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr>
+                                                        <td>Win Percentage</td>
+                                                        <td>${team1Stats.win_percentage}%</td>
+                                                        <td>${team2Stats.win_percentage}%</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>Batting First Win %</td>
+                                                        <td>${team1Stats.batting_first_win_percentage}%</td>
+                                                        <td>${team2Stats.batting_first_win_percentage}%</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>Batting Second Win %</td>
+                                                        <td>${team1Stats.batting_second_win_percentage}%</td>
+                                                        <td>${team2Stats.batting_second_win_percentage}%</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>Home Win %</td>
+                                                        <td>${team1Stats.home_win_percentage}%</td>
+                                                        <td>${team2Stats.home_win_percentage}%</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>Away Win %</td>
+                                                        <td>${team1Stats.away_win_percentage}%</td>
+                                                        <td>${team2Stats.away_win_percentage}%</td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    document.getElementById('teamComparisonModalBody').innerHTML = modalHtml;
+                    
+                    // Create comparison chart
+                    const comparisonData = {
+                        labels: ['Win %', 'Batting 1st Win %', 'Batting 2nd Win %', 'Home Win %', 'Away Win %'],
+                        datasets: [
+                            {
+                                label: team1,
+                                data: [
+                                    team1Stats.win_percentage,
+                                    team1Stats.batting_first_win_percentage,
+                                    team1Stats.batting_second_win_percentage,
+                                    team1Stats.home_win_percentage,
+                                    team1Stats.away_win_percentage
+                                ],
+                                backgroundColor: 'rgba(231, 76, 60, 0.5)',
+                                borderColor: 'rgba(231, 76, 60, 1)',
+                                borderWidth: 2
+                            },
+                            {
+                                label: team2,
+                                data: [
+                                    team2Stats.win_percentage,
+                                    team2Stats.batting_first_win_percentage,
+                                    team2Stats.batting_second_win_percentage,
+                                    team2Stats.home_win_percentage,
+                                    team2Stats.away_win_percentage
+                                ],
+                                backgroundColor: 'rgba(52, 152, 219, 0.5)',
+                                borderColor: 'rgba(52, 152, 219, 1)',
+                                borderWidth: 2
+                            }
+                        ]
+                    };
+                    
+                    createRadarChart('comparisonChart', comparisonData, 'Team Comparison');
+                    
+                    teamComparisonModal.show();
+                })
+                .catch(error => {
+                    document.getElementById('teamComparisonModalBody').innerHTML = `
+                        <div class="alert alert-danger" role="alert">
+                            <i class="fas fa-exclamation-circle me-2"></i> Error: ${error.message}
+                        </div>
+                    `;
+                    teamComparisonModal.show();
+                });
+            });
+        })
+        .catch(error => {
+            document.getElementById('predictionResult').innerHTML = `
+                <div class="alert alert-danger" role="alert">
+                    <i class="fas fa-exclamation-circle me-2"></i> Error: ${error.message}
+                </div>
+            `;
+        });
+    });
+    {% endif %}
+});
+</script>
+{% endblock %}

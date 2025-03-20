@@ -1,0 +1,328 @@
+{% extends 'layout.html' %}
+
+{% block title %}Home{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-12 text-center mb-4">
+        <h1 class="display-4">
+            <i class="fas fa-cricket-ball text-danger"></i> IPL Match Predictor
+        </h1>
+        <p class="lead">
+            Analyze team performance, venue statistics, and predict match outcomes based on historical IPL data.
+        </p>
+    </div>
+</div>
+
+{% if error %}
+<div class="alert alert-danger" role="alert">
+    <i class="fas fa-exclamation-triangle"></i> {{ error }}
+</div>
+{% else %}
+
+<!-- Overview Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary bg-gradient h-100">
+            <div class="card-body text-center">
+                <h2 class="card-title"><i class="fas fa-trophy"></i></h2>
+                <h3>{{ stats.total_matches }}</h3>
+                <p class="card-text">Total Matches</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success bg-gradient h-100">
+            <div class="card-body text-center">
+                <h2 class="card-title"><i class="fas fa-medal"></i></h2>
+                <h3>{{ stats.most_wins.team }}</h3>
+                <p class="card-text">Most Wins ({{ stats.most_wins.wins }})</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info bg-gradient h-100">
+            <div class="card-body text-center">
+                <h2 class="card-title"><i class="fas fa-star"></i></h2>
+                <h3>{{ stats.most_player_of_match.player }}</h3>
+                <p class="card-text">Most Player of the Match ({{ stats.most_player_of_match.count }})</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning bg-gradient h-100">
+            <div class="card-body text-center">
+                <h2 class="card-title"><i class="fas fa-coins"></i></h2>
+                <h3>{{ stats.toss_win_match_win }}%</h3>
+                <p class="card-text">Toss Winners Win Match</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- IPL Seasons and Statistics -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-dark">
+                <h5 class="card-title mb-0"><i class="fas fa-calendar"></i> IPL Seasons</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="seasonChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-dark">
+                <h5 class="card-title mb-0"><i class="fas fa-chart-bar"></i> Batting First vs Second</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="battingChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Team Comparison -->
+<div class="card mb-4">
+    <div class="card-header bg-dark">
+        <h5 class="card-title mb-0"><i class="fas fa-users"></i> Team Comparison</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <label for="team1Select" class="form-label">Select Team 1</label>
+                <select class="form-select" id="team1Select">
+                    {% for team in teams %}
+                    <option value="{{ team }}">{{ team }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label for="team2Select" class="form-label">Select Team 2</label>
+                <select class="form-select" id="team2Select">
+                    {% for team in teams %}
+                    <option value="{{ team }}" {% if loop.index == 2 %}selected{% endif %}>{{ team }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label class="form-label">&nbsp;</label>
+                <button class="btn btn-primary w-100" id="compareTeamsBtn">Compare Teams</button>
+            </div>
+        </div>
+        <div class="mt-3" id="teamComparisonResults">
+            <div class="text-center text-muted py-5">
+                <i class="fas fa-chart-pie fa-3x mb-3"></i>
+                <p>Select two teams and click "Compare Teams" to view head-to-head statistics.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Highest and Lowest Scores -->
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header bg-dark">
+                <h5 class="card-title mb-0"><i class="fas fa-arrow-up"></i> Highest Team Scores</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Team</th>
+                                <th>Score</th>
+                                <th>Opponent</th>
+                                <th>Venue</th>
+                                <th>Season</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for score in stats.highest_scores %}
+                            <tr>
+                                <td>{{ score.team }}</td>
+                                <td><strong>{{ score.score }}</strong></td>
+                                <td>{{ score.opponent }}</td>
+                                <td>{{ score.venue }}</td>
+                                <td>{{ score.season }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header bg-dark">
+                <h5 class="card-title mb-0"><i class="fas fa-arrow-down"></i> Lowest Team Scores</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Team</th>
+                                <th>Score</th>
+                                <th>Opponent</th>
+                                <th>Venue</th>
+                                <th>Season</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for score in stats.lowest_scores %}
+                            <tr>
+                                <td>{{ score.team }}</td>
+                                <td><strong>{{ score.score }}</strong></td>
+                                <td>{{ score.opponent }}</td>
+                                <td>{{ score.venue }}</td>
+                                <td>{{ score.season }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Links -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="d-grid">
+            <a href="/team-analysis" class="btn btn-lg btn-outline-primary">
+                <i class="fas fa-users me-2"></i> Team Analysis
+            </a>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="d-grid">
+            <a href="/venue-stats" class="btn btn-lg btn-outline-success">
+                <i class="fas fa-map-marker-alt me-2"></i> Venue Statistics
+            </a>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="d-grid">
+            <a href="/predict" class="btn btn-lg btn-outline-info">
+                <i class="fas fa-chart-line me-2"></i> Predict Match
+            </a>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    {% if not error %}
+    // Seasons data for chart
+    const seasons = {{ stats.seasons|tojson }};
+    createSeasonChart(seasons);
+    
+    // Batting first vs second data
+    const battingData = {
+        labels: ['Batting First', 'Batting Second'],
+        datasets: [{
+            data: [{{ stats.toss_win_match_win }}, {{ 100 - stats.toss_win_match_win }}],
+            backgroundColor: ['#f1c40f', '#3498db'],
+        }]
+    };
+    createBattingChart(battingData);
+    
+    // Team comparison functionality
+    document.getElementById('compareTeamsBtn').addEventListener('click', function() {
+        const team1 = document.getElementById('team1Select').value;
+        const team2 = document.getElementById('team2Select').value;
+        
+        if (team1 === team2) {
+            alert('Please select two different teams for comparison.');
+            return;
+        }
+        
+        // Show loading indicator
+        document.getElementById('teamComparisonResults').innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2">Loading head-to-head statistics...</p>
+            </div>
+        `;
+        
+        // Fetch head-to-head data
+        fetch(`/api/head-to-head/${team1}/${team2}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                const totalMatches = data.matches_played;
+                const team1Wins = data.team1_wins;
+                const team2Wins = data.team2_wins;
+                const noResults = data.no_results;
+                const recentMatches = data.recent_matches || [];
+                
+                let html = `
+                    <div class="row">
+                        <div class="col-md-5">
+                            <canvas id="h2hChart" height="200"></canvas>
+                        </div>
+                        <div class="col-md-7">
+                            <h5>Head-to-Head: ${team1} vs ${team2}</h5>
+                            <p>Total Matches: ${totalMatches}</p>
+                            <p>${team1} Wins: ${team1Wins} (${data.team1_win_percentage}%)</p>
+                            <p>${team2} Wins: ${team2Wins} (${(100 - data.team1_win_percentage).toFixed(2)}%)</p>
+                            <p>No Results/Ties: ${noResults}</p>
+                            <h6 class="mt-3">Recent Matches:</h6>
+                            <ul class="list-group">
+                `;
+                
+                recentMatches.forEach(match => {
+                    html += `
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>${match.date} at ${match.venue}</span>
+                            <span class="badge bg-primary rounded-pill">${match.result}</span>
+                        </li>
+                    `;
+                });
+                
+                html += `
+                            </ul>
+                        </div>
+                    </div>
+                `;
+                
+                document.getElementById('teamComparisonResults').innerHTML = html;
+                
+                // Create head-to-head comparison chart
+                const h2hData = {
+                    labels: [team1, team2, 'No Result'],
+                    datasets: [{
+                        data: [team1Wins, team2Wins, noResults],
+                        backgroundColor: ['#e74c3c', '#3498db', '#95a5a6'],
+                    }]
+                };
+                
+                createPieChart('h2hChart', h2hData, 'Head-to-Head Results');
+            })
+            .catch(error => {
+                document.getElementById('teamComparisonResults').innerHTML = `
+                    <div class="alert alert-danger" role="alert">
+                        <i class="fas fa-exclamation-circle me-2"></i> Error: ${error.message}
+                    </div>
+                `;
+            });
+    });
+    {% endif %}
+});
+</script>
+{% endblock %}
